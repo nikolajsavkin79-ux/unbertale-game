@@ -1,0 +1,1547 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Unbertale - Battle Arena</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            overflow: hidden; background-color: #000; touch-action: none;
+            -webkit-user-select: none; user-select: none;
+            font-family: 'Courier New', monospace; color: #fff;
+        }
+        canvas { display: block; }
+        #start-menu {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 100;
+        }
+        .game-title {
+            font-size: 72px; font-weight: bold; color: #fff;
+            text-shadow: 0 0 20px #ff0, 0 0 40px #f80;
+            margin-bottom: 20px; letter-spacing: 8px;
+            animation: titleGlow 2s ease-in-out infinite;
+        }
+        @keyframes titleGlow {
+            0%, 100% { text-shadow: 0 0 20px #ff0, 0 0 40px #f80; }
+            50% { text-shadow: 0 0 30px #ff0, 0 0 60px #f80, 0 0 80px #f00; }
+        }
+        .subtitle { color: #ff0; font-size: 20px; margin-bottom: 60px; letter-spacing: 4px; }
+        .device-choice { display: flex; gap: 40px; margin-bottom: 40px; }
+        .device-btn {
+            width: 200px; height: 200px; background: #111; border: 4px solid #fff;
+            color: #fff; font-family: 'Courier New', monospace; font-size: 20px;
+            font-weight: bold; cursor: pointer; transition: all 0.2s;
+            display: flex; flex-direction: column; align-items: center;
+            justify-content: center; gap: 15px;
+        }
+        .device-btn:hover, .device-btn:active {
+            background: #ff0; color: #000; transform: scale(1.05);
+            box-shadow: 0 0 30px #ff0;
+        }
+        .device-icon { font-size: 60px; }
+        .device-label { font-size: 18px; }
+        #menu {
+            position: absolute; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); width: 95%; max-width: 900px;
+            max-height: 90vh; background: rgba(0, 0, 0, 0.98);
+            border: 4px solid #ff0; padding: 20px; display: none;
+            overflow-y: auto; z-index: 50;
+        }
+        #menu h1 {
+            text-align: center; color: #ff0; font-size: 24px;
+            margin-bottom: 20px; text-shadow: 3px 3px 0 #f00;
+        }
+        .enemy-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 15px;
+        }
+        .enemy-card {
+            background: #111; border: 3px solid #fff; padding: 12px;
+            color: #fff; font-family: 'Courier New', monospace; font-size: 12px;
+            cursor: pointer; transition: all 0.2s; text-align: center;
+            position: relative;
+        }
+        .enemy-card:hover, .enemy-card:active {
+            background: #ff0; color: #000; transform: scale(0.95);
+        }
+        .enemy-card strong { display: block; margin-bottom: 5px; font-size: 14px; }
+        .enemy-card.secret {
+            border-color: #f0f;
+            animation: secretGlow 1s ease-in-out infinite;
+        }
+        @keyframes secretGlow {
+            0%, 100% { box-shadow: 0 0 10px #f0f; }
+            50% { box-shadow: 0 0 30px #f0f, 0 0 50px #0ff; }
+        }
+        .soul-display {
+            position: absolute;
+            top: -25px;
+            left: 50%;
+            transform: translateX(-50%);
+            font-size: 24px;
+            text-shadow: 0 0 10px currentColor;
+        }
+        #joystick-zone {
+            position: absolute; bottom: 20px; left: 20px;
+            width: 160px; height: 160px; display: none;
+            pointer-events: auto; z-index: 10;
+        }
+        #joystick-base {
+            position: absolute; top: 0; left: 0; width: 160px; height: 160px;
+            background: rgba(255, 255, 255, 0.1); border: 3px solid rgba(255, 255, 255, 0.4);
+            border-radius: 50%;
+        }
+        #joystick-stick {
+            position: absolute; width: 70px; height: 70px;
+            background: rgba(255, 255, 255, 0.3); border: 3px solid rgba(255, 255, 255, 0.8);
+            border-radius: 50%; top: 50%; left: 50%;
+            transform: translate(-50%, -50%); transition: background 0.1s;
+        }
+        #joystick-stick.active { background: rgba(255, 255, 0, 0.4); border-color: #ff0; }
+        #btn-attack {
+            position: absolute; bottom: 20px; right: 20px;
+            width: 110px; height: 110px; background: rgba(0, 255, 0, 0.2);
+            border: 4px solid rgba(0, 255, 0, 0.7); border-radius: 50%;
+            color: #0f0; font-size: 20px; font-weight: bold; display: none;
+            align-items: center; justify-content: center; pointer-events: auto;
+            box-shadow: 0 0 25px rgba(0, 255, 0, 0.5); z-index: 10;
+        }
+        #btn-attack:active { background: rgba(0, 255, 0, 0.5); transform: scale(0.95); }
+        #pc-hint {
+            position: absolute; bottom: 20px; left: 50%;
+            transform: translateX(-50%); background: rgba(0, 0, 0, 0.8);
+            border: 2px solid #ff0; padding: 10px 20px; color: #ff0;
+            font-size: 14px; display: none; z-index: 10; text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <div id="start-menu">
+        <div class="game-title">UNBERTALE</div>
+        <div class="subtitle">BATTLE ARENA</div>
+        <div class="device-choice">
+            <button class="device-btn" id="btn-mobile">
+                <div class="device-icon">📱</div>
+                <div class="device-label">ТЕЛЕФОН</div>
+            </button>
+            <button class="device-btn" id="btn-pc">
+                <div class="device-icon">💻</div>
+                <div class="device-label">ПК</div>
+            </button>
+        </div>
+    </div>
+    <canvas id="gameCanvas"></canvas>
+    <div id="menu">
+        <h1>⚔️ ВЫБЕРИ ПРОТИВНИКА ⚔️</h1>
+        <div class="enemy-grid" id="enemyGrid"></div>
+    </div>
+    <div id="joystick-zone">
+        <div id="joystick-base"><div id="joystick-stick"></div></div>
+    </div>
+    <button id="btn-attack">АТАКА</button>
+    <div id="pc-hint">WASD / Стрелки — движение | ПРОБЕЛ / J — атака</div>
+
+    <script>
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+        let width, height;
+        function resize() { width = canvas.width = window.innerWidth; height = canvas.height = window.innerHeight; }
+        resize();
+        window.addEventListener('resize', resize);
+
+        let audioCtx = null;
+        let creatorMusicInterval = null;
+        let creatorMusicPhase = 0;
+
+        function initAudio() {
+            if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+            if (audioCtx.state === 'suspended') audioCtx.resume();
+        }
+
+        function playTone(freq, duration, type = 'square', volume = 0.15) {
+            if (!audioCtx) return;
+            const osc = audioCtx.createOscillator();
+            const gain = audioCtx.createGain();
+            osc.type = type; osc.frequency.value = freq;
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            osc.connect(gain); gain.connect(audioCtx.destination);
+            osc.start(); osc.stop(audioCtx.currentTime + duration);
+        }
+
+        function playNoise(duration, volume = 0.1) {
+            if (!audioCtx) return;
+            const bufferSize = audioCtx.sampleRate * duration;
+            const buffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
+            const data = buffer.getChannelData(0);
+            for (let i = 0; i < bufferSize; i++) data[i] = Math.random() * 2 - 1;
+            const noise = audioCtx.createBufferSource();
+            noise.buffer = buffer;
+            const gain = audioCtx.createGain();
+            gain.gain.setValueAtTime(volume, audioCtx.currentTime);
+            gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+            noise.connect(gain); gain.connect(audioCtx.destination);
+            noise.start();
+        }
+
+        const bossAttackSounds = {
+            "СКЕЛЕТРОН": () => { playTone(200, 0.15, 'square', 0.12); setTimeout(() => playTone(150, 0.1, 'square', 0.1), 50); },
+            "ИФРИТ": () => { playNoise(0.3, 0.15); playTone(100, 0.3, 'sawtooth', 0.1); },
+            "ЛЕДЯНАЯ КОРОЛЕВА": () => { playTone(800, 0.2, 'sine', 0.1); setTimeout(() => playTone(1200, 0.15, 'sine', 0.08), 80); },
+            "ПАУКОТРОН": () => { playNoise(0.15, 0.12); playTone(300, 0.1, 'square', 0.08); },
+            "ТЕНЬ": () => { playTone(80, 0.4, 'sine', 0.15); playTone(60, 0.4, 'sine', 0.1); },
+            "ГРУДА КАМНЕЙ": () => { playNoise(0.25, 0.2); playTone(50, 0.3, 'sawtooth', 0.12); },
+            "ЯДОВИТЫЙ АЛХИМИК": () => { playTone(400, 0.2, 'triangle', 0.1); setTimeout(() => playTone(600, 0.15, 'triangle', 0.08), 100); },
+            "ЗВЕЗДОЧЁТ": () => { playTone(1000, 0.1, 'sine', 0.1); setTimeout(() => playTone(1500, 0.1, 'sine', 0.08), 60); setTimeout(() => playTone(2000, 0.1, 'sine', 0.06), 120); },
+            "АЛДУИН": () => { playNoise(0.4, 0.2); playTone(70, 0.5, 'sawtooth', 0.15); },
+            "СОЗДАТЕЛЬ": () => { playTone(500, 0.3, 'square', 0.12); playTone(700, 0.3, 'sine', 0.1); playTone(900, 0.3, 'triangle', 0.08); }
+        };
+
+        const bossHurtSounds = {
+            "СКЕЛЕТРОН": () => { playTone(400, 0.1, 'square', 0.15); playNoise(0.1, 0.1); },
+            "ИФРИТ": () => { playTone(150, 0.2, 'sawtooth', 0.15); },
+            "ЛЕДЯНАЯ КОРОЛЕВА": () => { playTone(1500, 0.15, 'sine', 0.12); playNoise(0.1, 0.08); },
+            "ПАУКОТРОН": () => { playTone(800, 0.08, 'square', 0.15); playTone(600, 0.08, 'square', 0.1); },
+            "ТЕНЬ": () => { playTone(100, 0.3, 'sine', 0.15); },
+            "ГРУДА КАМНЕЙ": () => { playNoise(0.2, 0.2); },
+            "ЯДОВИТЫЙ АЛХИМИК": () => { playTone(500, 0.15, 'triangle', 0.12); },
+            "ЗВЕЗДОЧЁТ": () => { playTone(2000, 0.1, 'sine', 0.1); playTone(1000, 0.15, 'sine', 0.08); },
+            "АЛДУИН": () => { playTone(80, 0.4, 'sawtooth', 0.2); playNoise(0.3, 0.15); },
+            "СОЗДАТЕЛЬ": () => { playTone(300, 0.2, 'square', 0.15); playTone(200, 0.25, 'sawtooth', 0.12); }
+        };
+
+        function startCreatorMusic() {
+            if (!audioCtx) return;
+            creatorMusicPhase = 0;
+            const notes = [110, 130.81, 146.83, 164.81, 196, 220, 261.63, 293.66, 329.63, 392];
+            creatorMusicInterval = setInterval(() => {
+                if (gameState !== 'battle' || currentEnemy?.name !== "СОЗДАТЕЛЬ") { stopCreatorMusic(); return; }
+                creatorMusicPhase++;
+                const noteIdx = creatorMusicPhase % notes.length;
+                const volume = Math.min(0.15, 0.05 + creatorMusicPhase * 0.002);
+                playTone(notes[noteIdx], 0.3, 'sawtooth', volume);
+                if (creatorMusicPhase % 2 === 0) playTone(notes[noteIdx] * 1.5, 0.2, 'square', volume * 0.5);
+                if (creatorMusicPhase % 4 === 0) playNoise(0.1, 0.05);
+                if (creatorMusicPhase > 20 && creatorMusicPhase % 4 === 0) playTone(55, 0.4, 'sawtooth', 0.1);
+            }, 250);
+        }
+
+        function stopCreatorMusic() {
+            if (creatorMusicInterval) { clearInterval(creatorMusicInterval); creatorMusicInterval = null; }
+        }
+
+        const soulColors = {
+            "ЛЕДЯНАЯ КОРОЛЕВА": "#4488ff",
+            "ИФРИТ": "#ff8800",
+            "ТЕНЬ": "#aa44ff",
+            "ЯДОВИТЫЙ АЛХИМИК": "#00ff44",
+            "ЗВЕЗДОЧЁТ": "#ff44aa",
+            "АЛДУИН": "#ffcc00",
+            "ИГРОК": "#ff0000"
+        };
+
+        const soulOrder = ["ИГРОК", "ЛЕДЯНАЯ КОРОЛЕВА", "ИФРИТ", "ТЕНЬ", "ЯДОВИТЫЙ АЛХИМИК", "ЗВЕЗДОЧЁТ", "АЛДУИН"];
+
+        let gameState = 'start';
+        let deviceType = null;
+        const player = { x: 0, y: 0, size: 16, speed: 5, hp: 92, maxHp: 92, slowTimer: 0, invulnTimer: 0 };
+
+        let battleBox = { x: 0, y: 0, width: 300, height: 200 };
+        let projectiles = [];
+        let warnings = [];
+        let webProjections = [];
+        let pendingWebs = [];
+        let webs = [];
+        let puddles = [];
+        let blackHoles = [];
+        let currentEnemy = null;
+        let attackTimer = 0;
+        let attackPhase = 0;
+        let battleTime = 0;
+        let counterWindow = 0;
+        let targetZone = null;
+        let difficultyMultiplier = 1;
+        let battlePhase = 'defend';
+        let skeletonHands = { left: null, right: null, timer: 0 };
+        let arrowIndicators = [];
+        let bossQuotes = [];
+        let damageNumbers = [];
+        let defeatedBosses = new Set();
+        let collectedSouls = new Set(["ИГРОК"]);
+        let currentSoulColor = "#ff0000";
+        let allCreatorCircles = [];
+        let allCreatorTeleportTimer = 0;
+        let sansTunnels = [];
+
+        let joystickX = 0, joystickY = 0;
+        let isAttacking = false;
+        let keys = { up: false, down: false, left: false, right: false, attack: false };
+
+        function addWarning(x, y, w, h, color, delay, callback) {
+            warnings.push({ x, y, width: w, height: h, color, delay, callback });
+        }
+
+        function addQuote(text, color, duration = 120) {
+            bossQuotes.push({ text, color, life: duration, maxLife: duration, x: battleBox.x + battleBox.width / 2, y: battleBox.y - 60 });
+        }
+
+        function addDamageNumber(value, isCrit) {
+            damageNumbers.push({ value, isCrit, x: battleBox.x + battleBox.width + 20, y: battleBox.y + 20 + Math.random() * 40, life: 60, maxLife: 60, vy: -1 });
+        }
+
+        function pointToLineDist(px, py, x1, y1, x2, y2) {
+            const A = px - x1, B = py - y1, C = x2 - x1, D = y2 - y1;
+            const dot = A * C + B * D;
+            const lenSq = C * C + D * D;
+            let t = lenSq !== 0 ? dot / lenSq : -1;
+            t = Math.max(0, Math.min(1, t));
+            const xx = x1 + t * C, yy = y1 + t * D;
+            return Math.sqrt((px - xx) ** 2 + (py - yy) ** 2);
+        }
+
+        function clamp(v, min, max) { return Math.max(min, Math.min(max, v)); }
+
+        function drawPixelHeart(x, y, size, color) {
+            ctx.fillStyle = color;
+            const s = size / 16;
+            const pattern = [
+                [0,0,1,1,0,1,1,0,0],
+                [0,1,1,1,1,1,1,1,0],
+                [1,1,1,1,1,1,1,1,1],
+                [1,1,1,1,1,1,1,1,1],
+                [0,1,1,1,1,1,1,1,0],
+                [0,0,1,1,1,1,1,0,0],
+                [0,0,0,1,1,1,0,0,0],
+                [0,0,0,0,1,0,0,0,0]
+            ];
+            for (let row = 0; row < pattern.length; row++) {
+                for (let col = 0; col < pattern[row].length; col++) {
+                    if (pattern[row][col]) {
+                        ctx.fillRect(x + col * s - size/2, y + row * s - size/2, s, s);
+                    }
+                }
+            }
+        }
+
+        // === ПРОВЕРКА: находится ли точка внутри боевой зоны ===
+        function isInsideField(x, y) {
+            return x >= battleBox.x && x <= battleBox.x + battleBox.width &&
+                   y >= battleBox.y && y <= battleBox.y + battleBox.height;
+        }
+
+        const bossDialogues = {
+            "СКЕЛЕТРОН": { attack: ["*стук костей*", "*хрусть*", "*скрип суставов*"], hurt: ["*ауч!*", "*кости трещат!*", "*ой-ой-ой!*", "*не бей!*"] },
+            "ИФРИТ": { attack: ["*крик из преисподни*", "*пламя разжигается*", "*ГОРИ!*"], hurt: ["*ААААРГХ!*", "*пламя гаснет!*", "*больно же!*", "*ты заплатишь!*"] },
+            "ЛЕДЯНАЯ КОРОЛЕВА": { attack: ["*замри*", "*одевайся теплее*", "*хруст льда*", "*хруст снега*", "*несносное создание*"], hurt: ["*хрупкая...* ", "*мой лёд!*", "*холодно... больно...*"] },
+            "ПАУКОТРОН": { attack: ["*шшшшш...*", "*паутина натянута*", "*ты в моей сети!*", "*жжжжж!*"], hurt: ["*визг паука!*", "*ноги ломаются!*", "*шшшш-ааа!*"] },
+            "ТЕНЬ": { attack: ["*твоя душа несовершенна*", "*аннигиляция*", "*что есть музыка жизни?*", "*вой из пустоты*"], hurt: ["*тьма рассеивается...* ", "*боль...*", "*я... исчезаю...*"] },
+            "ГРУДА КАМНЕЙ": { attack: ["*грохот камней*", "*земля дрожит*", "*нерушимая защита!*"], hurt: ["*треск!*", "*камень откалывается!*", "*больно... но я стою!*"] },
+            "ЯДОВИТЫЙ АЛХИМИК": { attack: ["*я тебя растворю!*", "*хочешь яблока?*", "*да не брыкайся ты!*", "*звук разбитого стекла*"], hurt: ["*шипит...* ", "*мой яд!*", "*не трогай колбы!*"] },
+            "ЗВЕЗДОЧЁТ": { attack: ["*я звезда!*", "*тебе не скрыться от моей кары*", "*я свечусь от радости*", "*ты жалок*"], hurt: ["*звёзды гаснут...* ", "*мой свет!*", "*невозможно!*"] },
+            "АЛДУИН": { attack: ["*я пожру этот мир вместе с тобой!*", "*зажарься!*", "*ты всего лишь смертный*", "*драконий Крик*"], hurt: ["*РРРРАААРГХ!*", "*драконья чешуя трескается!*", "*ты смеешь?!*"] },
+            "СОЗДАТЕЛЬ": {
+                attack: ["*я создаю и разрушаю*", "*круг замыкается*", "*алхимия совершенна*", "*телепортация!*", "*ты не достоин!*", "*туннель судьбы!*"],
+                hurt: ["*невозможно!*", "*я... СОЗДАТЕЛЬ!*", "*боль... впервые...*"]
+            }
+        };
+
+        const enemies = [
+            {
+                name: "СКЕЛЕТРОН", color: "#fff", hp: 1000, description: "Просто скелет",
+                attacks: [
+                    function(time, diff) {
+                        if (time % Math.floor(90 / diff) === 0) {
+                            for (let c = 0; c < 3; c++) {
+                                const side = Math.floor(Math.random() * 4);
+                                let startX, startY;
+                                if (side === 0) { startX = battleBox.x + 30 + Math.random() * (battleBox.width - 60); startY = battleBox.y - 30; }
+                                else if (side === 1) { startX = battleBox.x + battleBox.width + 30; startY = battleBox.y + 30 + Math.random() * (battleBox.height - 60); }
+                                else if (side === 2) { startX = battleBox.x + 30 + Math.random() * (battleBox.width - 60); startY = battleBox.y + battleBox.height + 30; }
+                                else { startX = battleBox.x - 30; startY = battleBox.y + 30 + Math.random() * (battleBox.height - 60); }
+                                const dx = player.x - startX, dy = player.y - startY;
+                                const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                                const baseVx = (dx / dist) * 3.5 * diff, baseVy = (dy / dist) * 3.5 * diff;
+                                for (let i = 0; i < 5; i++) {
+                                    setTimeout(() => {
+                                        if (gameState !== 'battle') return;
+                                        projectiles.push({ x: startX, y: startY, vx: baseVx + (Math.random()-0.5)*1.5, vy: baseVy + (Math.random()-0.5)*1.5, size: 10, color: "#fff", type: "chainBone", time: 0, amplitude: 12, speed: 0.12, life: 100, wasInside: false });
+                                    }, i * 90);
+                                }
+                            }
+                        }
+                    },
+                    function(time, diff) {
+                        skeletonHands.timer++;
+                        const cycle = skeletonHands.timer % 360;
+                        if (cycle < 120) {
+                            if (cycle === 1) {
+                                skeletonHands.left = { x: battleBox.x - 20, y: battleBox.y + battleBox.height * 0.5, life: 120, shootTimer: 0, reach: battleBox.width * 0.4 };
+                                skeletonHands.right = null;
+                                if (Math.random() < 0.3) { const q = bossDialogues["СКЕЛЕТРОН"].attack; addQuote(q[Math.floor(Math.random()*q.length)], "#fff"); if (bossAttackSounds["СКЕЛЕТРОН"]) bossAttackSounds["СКЕЛЕТРОН"](); }
+                            }
+                            if (skeletonHands.left) {
+                                skeletonHands.left.life--; skeletonHands.left.shootTimer++;
+                                skeletonHands.left.y = battleBox.y + battleBox.height * 0.5 + Math.sin(time * 0.05) * 30;
+                                if (skeletonHands.left.shootTimer % 35 === 0) {
+                                    const targetX = battleBox.x + battleBox.width * 0.35 + Math.random() * battleBox.width * 0.1;
+                                    const targetY = skeletonHands.left.y + (Math.random() - 0.5) * 60;
+                                    const dx = targetX - skeletonHands.left.x, dy = targetY - skeletonHands.left.y;
+                                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                                    projectiles.push({ x: skeletonHands.left.x, y: skeletonHands.left.y, vx: (dx/dist)*4*diff, vy: (dy/dist)*4*diff, size: 12, color: "#fff", type: "bone", life: 80, wasInside: false });
+                                }
+                                if (skeletonHands.left.life <= 0) skeletonHands.left = null;
+                            }
+                        } else if (cycle >= 180 && cycle < 300) {
+                            if (cycle === 181) {
+                                skeletonHands.right = { x: battleBox.x + battleBox.width + 20, y: battleBox.y + battleBox.height * 0.5, life: 120, shootTimer: 0, reach: battleBox.width * 0.4 };
+                                skeletonHands.left = null;
+                                if (Math.random() < 0.3) { const q = bossDialogues["СКЕЛЕТРОН"].attack; addQuote(q[Math.floor(Math.random()*q.length)], "#fff"); if (bossAttackSounds["СКЕЛЕТРОН"]) bossAttackSounds["СКЕЛЕТРОН"](); }
+                            }
+                            if (skeletonHands.right) {
+                                skeletonHands.right.life--; skeletonHands.right.shootTimer++;
+                                skeletonHands.right.y = battleBox.y + battleBox.height * 0.5 - Math.sin(time * 0.05) * 30;
+                                if (skeletonHands.right.shootTimer % 35 === 0) {
+                                    const targetX = battleBox.x + battleBox.width * 0.65 - Math.random() * battleBox.width * 0.1;
+                                    const targetY = skeletonHands.right.y + (Math.random() - 0.5) * 60;
+                                    const dx = targetX - skeletonHands.right.x, dy = targetY - skeletonHands.right.y;
+                                    const dist = Math.sqrt(dx * dx + dy * dy) || 1;
+                                    projectiles.push({ x: skeletonHands.right.x, y: skeletonHands.right.y, vx: (dx/dist)*4*diff, vy: (dy/dist)*4*diff, size: 12, color: "#fff", type: "bone", life: 80, wasInside: false });
+                                }
+                                if (skeletonHands.right.life <= 0) skeletonHands.right = null;
+                            }
+                        } else { skeletonHands.left = null; skeletonHands.right = null; }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(130 / diff) === 0) {
+                            for (let i = 0; i < 3; i++) {
+                                const angle = (i / 3) * Math.PI * 2 + time * 0.01;
+                                projectiles.push({ x: battleBox.x + battleBox.width/2, y: battleBox.y + battleBox.height/2, vx: Math.cos(angle)*3, vy: Math.sin(angle)*3, size: 14, color: "#fff", type: "boomerang", time: 0, centerX: battleBox.x + battleBox.width/2, centerY: battleBox.y + battleBox.height/2, angle: angle, radius: 0, life: 120, wasInside: true });
+                            }
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(110 / diff) === 0) {
+                            const centerX = battleBox.x + battleBox.width/2 + (Math.random()-0.5)*100;
+                            addWarning(centerX - 40, battleBox.y, 80, 40, "#fff", 50, () => {
+                                for (let i = 0; i < 7; i++) {
+                                    const angle = -Math.PI/2 + (i-3)*0.25;
+                                    projectiles.push({ x: centerX, y: battleBox.y + 20, vx: Math.cos(angle)*3.5*diff, vy: Math.sin(angle)*3.5*diff + 2, size: 9, color: "#fff", type: "bone", life: 150, wasInside: false });
+                                }
+                            });
+                        }
+                    }
+                ]
+            },
+            {
+                name: "ИФРИТ", color: "#f80", hp: 1200, description: "Зажигалочка",
+                attacks: [
+                    function(time, diff) {
+                        if (time % Math.floor(70 / diff) === 0) {
+                            if (Math.random() < 0.2) { const q = bossDialogues["ИФРИТ"].attack; addQuote(q[Math.floor(Math.random()*q.length)], "#f80"); if (bossAttackSounds["ИФРИТ"]) bossAttackSounds["ИФРИТ"](); }
+                            for (let i = 0; i < 2; i++) {
+                                const startX = battleBox.x + 20 + Math.random() * (battleBox.width - 40);
+                                projectiles.push({ x: startX, y: battleBox.y - 10, vx: (Math.random()-0.5)*2, vy: 4*diff, size: 14, color: "#f80", type: "meteor", life: 120, wasInside: false });
+                            }
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(150 / diff) === 0) {
+                            const cx = battleBox.x + battleBox.width/2, cy = battleBox.y + battleBox.height/2;
+                            addWarning(cx - 80, cy - 80, 160, 160, "#f00", 60, () => {
+                                for (let i = 0; i < 16; i++) {
+                                    const angle = (i/16) * Math.PI * 2;
+                                    projectiles.push({ x: cx, y: cy, vx: Math.cos(angle)*2, vy: Math.sin(angle)*2, size: 10, color: "#f80", type: "fire", expanding: true, expandSpeed: 0.08*diff, life: 120, wasInside: true });
+                                }
+                            });
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(130 / diff) === 0) {
+                            const x = battleBox.x + 30 + Math.random() * (battleBox.width - 60);
+                            addWarning(x - 25, battleBox.y, 50, battleBox.height, "#f00", 70, () => {
+                                projectiles.push({ x: x, y: battleBox.y, vx: 0, vy: 8*diff, width: 14, height: 60, color: "#f00", type: "laser", life: 100, wasInside: false });
+                            });
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(40 / diff) === 0) {
+                            projectiles.push({ x: battleBox.x + Math.random() * battleBox.width, y: battleBox.y, vx: (Math.random()-0.5)*2, vy: 4*diff, size: 9, color: "#f80", type: "fire", life: 100, wasInside: false });
+                        }
+                    }
+                ]
+            },
+            {
+                name: "ЛЕДЯНАЯ КОРОЛЕВА", color: "#0ff", hp: 1100, description: "Холодная особа",
+                attacks: [
+                    function(time, diff) {
+                        if (time % Math.floor(110 / diff) === 0) {
+                            if (Math.random() < 0.25) { const q = bossDialogues["ЛЕДЯНАЯ КОРОЛЕВА"].attack; addQuote(q[Math.floor(Math.random()*q.length)], "#0ff"); if (bossAttackSounds["ЛЕДЯНАЯ КОРОЛЕВА"]) bossAttackSounds["ЛЕДЯНАЯ КОРОЛЕВА"](); }
+                            const startX = battleBox.x + 20 + Math.random() * (battleBox.width - 40);
+                            projectiles.push({ x: startX, y: battleBox.y, vx: (Math.random()-0.5)*1.5, vy: 2.5*diff, size: 16, color: "#0ff", type: "snowball", life: 300, explodeOnHit: true, wasInside: false });
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(200 / diff) === 0) {
+                            const zx = battleBox.x + 20 + Math.random() * (battleBox.width - 100);
+                            const zy = battleBox.y + 20 + Math.random() * (battleBox.height - 100);
+                            addWarning(zx, zy, 80, 80, "#0ff", 60, () => {
+                                puddles.push({ x: zx, y: zy, width: 80, height: 80, color: "#0ff", type: "freeze", life: 240, effect: 'slow' });
+                                for (let i = 0; i < 8; i++) {
+                                    setTimeout(() => {
+                                        if (gameState !== 'battle') return;
+                                        const angle = Math.random() * Math.PI * 2, dist = 50 + Math.random() * 80;
+                                        projectiles.push({ x: zx + Math.cos(angle)*dist, y: zy + Math.sin(angle)*dist, vx: -Math.cos(angle)*2*diff, vy: -Math.sin(angle)*2*diff, size: 10, color: "#fff", type: "snowball", life: 300, explodeOnHit: true, wasInside: true });
+                                    }, i * 200);
+                                }
+                            });
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(50 / diff) === 0) {
+                            const side = Math.floor(Math.random() * 4);
+                            let proj = { size: 8, color: "#0ff", type: "ice", life: 200, wasInside: false };
+                            if (side === 0) { proj.x = battleBox.x + Math.random() * battleBox.width; proj.y = battleBox.y; proj.vx = 0; proj.vy = 3.5*diff; }
+                            else if (side === 1) { proj.x = battleBox.x + Math.random() * battleBox.width; proj.y = battleBox.y + battleBox.height; proj.vx = 0; proj.vy = -3.5*diff; }
+                            else if (side === 2) { proj.x = battleBox.x; proj.y = battleBox.y + Math.random() * battleBox.height; proj.vx = 3.5*diff; proj.vy = 0; }
+                            else { proj.x = battleBox.x + battleBox.width; proj.y = battleBox.y + Math.random() * battleBox.height; proj.vx = -3.5*diff; proj.vy = 0; }
+                            projectiles.push(proj);
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(140 / diff) === 0) {
+                            const fromLeft = Math.random() < 0.5;
+                            const y = battleBox.y + battleBox.height - 20;
+                            addWarning(fromLeft ? battleBox.x : battleBox.x + battleBox.width - 40, y - 15, 40, 30, "#0ff", 50, () => {
+                                for (let i = 0; i < 8; i++) {
+                                    projectiles.push({ x: fromLeft ? battleBox.x + i*20 : battleBox.x + battleBox.width - i*20, y: y, vx: fromLeft ? 3.5*diff : -3.5*diff, vy: -Math.sin(i*0.3)*1.5, size: 12, color: "#0ff", type: "ice", life: 200, wasInside: false });
+                                }
+                            });
+                        }
+                    }
+                ]
+            },
+            {
+                name: "ПАУКОТРОН", color: "#888", hp: 1400, description: "Фу, паук!",
+                attacks: [
+                    function(time, diff) {
+                        if (time % Math.floor(380 / diff) === 0) {
+                            if (Math.random() < 0.3) { const q = bossDialogues["ПАУКОТРОН"].attack; addQuote(q[Math.floor(Math.random()*q.length)], "#888"); if (bossAttackSounds["ПАУКОТРОН"]) bossAttackSounds["ПАУКОТРОН"](); }
+                            const numH = 3, numV = 3;
+                            const newWebs = [];
+                            for (let i = 1; i <= numH; i++) { const y = battleBox.y + (battleBox.height/(numH+1))*i; newWebs.push({ x1: battleBox.x, y1: y, x2: battleBox.x + battleBox.width, y2: y }); }
+                            for (let i = 1; i <= numV; i++) { const x = battleBox.x + (battleBox.width/(numV+1))*i; newWebs.push({ x1: x, y1: battleBox.y, x2: x, y2: battleBox.y + battleBox.height }); }
+                            pendingWebs = newWebs;
+                            webProjections = newWebs.map(w => ({ ...w, life: 90 }));
+                            setTimeout(() => {
+                                if (gameState !== 'battle') return;
+                                webs = [];
+                                for (const w of pendingWebs) { webs.push({ x1: w.x1, y1: w.y1, x2: w.x2, y2: w.y2, color: "#aaa", life: 350 }); }
+                                pendingWebs = [];
+                            }, 1500);
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(60 / diff) === 0) {
+                            const side = Math.random() < 0.5 ? 0 : 1;
+                            const startX = side === 0 ? battleBox.x : battleBox.x + battleBox.width;
+                            const targetY = battleBox.y + battleBox.height * 0.6 + Math.random() * battleBox.height * 0.35;
+                            const targetX = battleBox.x + 20 + Math.random() * (battleBox.width - 40);
+                            const dx = targetX - startX, dy = targetY - (battleBox.y + battleBox.height - 20);
+                            const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                            projectiles.push({ x: startX, y: battleBox.y + battleBox.height - 20, vx: (dx/dist)*4*diff, vy: (dy/dist)*4*diff - 2, size: 10, color: "#0f0", type: "acid", gravity: 0.12, life: 120, wasInside: false });
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(70 / diff) === 0) {
+                            for (let t = 0; t < 2; t++) {
+                                const tx = battleBox.x + 20 + Math.random() * (battleBox.width - 40);
+                                const ty = battleBox.y + 20 + Math.random() * (battleBox.height - 40);
+                                addWarning(tx - 20, ty - 20, 40, 40, "#aaa", 45, () => {
+                                    projectiles.push({ x: tx, y: ty, vx: 0, vy: 0, size: 18, color: "#aaa", type: "webTrap", life: 100, stationary: true, wasInside: true });
+                                });
+                            }
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(100 / diff) === 0) {
+                            const y = battleBox.y + 20 + Math.random() * (battleBox.height - 40);
+                            addWarning(battleBox.x, y - 12, battleBox.width, 24, "#f00", 55, () => {
+                                projectiles.push({ x: battleBox.x, y: y, vx: 6*diff, vy: 0, width: 50, height: 8, color: "#f00", type: "laser", life: 100, wasInside: false });
+                            });
+                        }
+                    }
+                ]
+            },
+            {
+                name: "ТЕНЬ", color: "#808", hp: 900, description: "Просто тень",
+                attacks: [
+                    function(time, diff) {
+                        if (time % Math.floor(35 / diff) === 0) {
+                            const angle = (time/35) * 0.3;
+                            for (let s = 0; s < 2; s++) {
+                                const a = angle + s * Math.PI;
+                                projectiles.push({ x: battleBox.x + battleBox.width/2, y: battleBox.y + battleBox.height/2, vx: Math.cos(a)*2.5*diff, vy: Math.sin(a)*2.5*diff, size: 10, color: "#808", type: "shadow", life: 150, wasInside: true });
+                            }
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(80 / diff) === 0) {
+                            if (Math.random() < 0.3) { const q = bossDialogues["ТЕНЬ"].attack; addQuote(q[Math.floor(Math.random()*q.length)], "#808"); if (bossAttackSounds["ТЕНЬ"]) bossAttackSounds["ТЕНЬ"](); }
+                            const count = 4;
+                            const startX = battleBox.x + 30 + Math.random() * (battleBox.width - 60 - count*30);
+                            const fromBottom = Math.random() < 0.5;
+                            for (let k = 0; k < count; k++) {
+                                const tx = startX + k * 30;
+                                warnings.push({ x: tx - 10, y: fromBottom ? battleBox.y + battleBox.height - 40 : battleBox.y, width: 20, height: 40, color: "#808", delay: 50, isSpikeWarning: true, fromBottom: fromBottom, callback: () => { projectiles.push({ x: tx, y: fromBottom ? battleBox.y + battleBox.height : battleBox.y, vx: 0, vy: fromBottom ? -6*diff : 6*diff, width: 8, height: 40, color: "#808", type: "spear", life: 100, wasInside: false }); } });
+                            }
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(160 / diff) === 0) {
+                            for (let i = 0; i < 3; i++) {
+                                const cx = battleBox.x + 30 + Math.random() * (battleBox.width - 60);
+                                const cy = battleBox.y + 30 + Math.random() * (battleBox.height - 60);
+                                projectiles.push({ x: cx, y: cy, vx: 0, vy: 0, size: 16, color: "#606", type: "clone", life: 100, shootTimer: 0, stationary: true, wasInside: true });
+                            }
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(220 / diff) === 0) {
+                            const cx = battleBox.x + battleBox.width/2, cy = battleBox.y + battleBox.height/2;
+                            addWarning(cx - 100, cy - 100, 200, 200, "#404", 70, () => {
+                                blackHoles.push({ x: cx, y: cy, radius: 100, color: "#404", life: 200, pull: 0.25*diff });
+                                for (let i = 0; i < 30; i++) {
+                                    setTimeout(() => {
+                                        if (gameState !== 'battle') return;
+                                        const angle = (i/30) * Math.PI * 2 * 3, radius = 20 + i * 3;
+                                        projectiles.push({ x: cx + Math.cos(angle)*radius, y: cy + Math.sin(angle)*radius, vx: Math.cos(angle + Math.PI/2)*2.5*diff, vy: Math.sin(angle + Math.PI/2)*2.5*diff, size: 9, color: "#606", type: "shadow", life: 120, wasInside: true });
+                                    }, i * 60);
+                                }
+                            });
+                        }
+                    }
+                ]
+            },
+            {
+                name: "ГРУДА КАМНЕЙ", color: "#840", hp: 1800, description: "Непоколебимая защита",
+                attacks: [
+                    function(time, diff) {
+                        if (time % Math.floor(180 / diff) === 0) {
+                            if (Math.random() < 0.3) { const q = bossDialogues["ГРУДА КАМНЕЙ"].attack; addQuote(q[Math.floor(Math.random()*q.length)], "#840"); if (bossAttackSounds["ГРУДА КАМНЕЙ"]) bossAttackSounds["ГРУДА КАМНЕЙ"](); }
+                            const cx = battleBox.x + battleBox.width/2, cy = battleBox.y + battleBox.height/2;
+                            addWarning(cx - 100, cy - 100, 200, 200, "#840", 80, () => {
+                                for (let i = 0; i < 20; i++) {
+                                    const angle = (i/20) * Math.PI * 2;
+                                    projectiles.push({ x: cx, y: cy, vx: Math.cos(angle)*(2.5+Math.random()*1.5)*diff, vy: Math.sin(angle)*(2.5+Math.random()*1.5)*diff, size: 14 + Math.random()*6, color: "#840", type: "rock", life: 150, wasInside: true });
+                                }
+                            });
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(50 / diff) === 0) {
+                            for (let i = 0; i < 2; i++) {
+                                projectiles.push({ x: battleBox.x + Math.random() * battleBox.width, y: battleBox.y, vx: (Math.random()-0.5)*1.5, vy: 3*diff, size: 14 + Math.random()*5, color: "#840", type: "rock", life: 120, wasInside: false });
+                            }
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(150 / diff) === 0) {
+                            const isH = Math.random() < 0.5;
+                            if (isH) {
+                                const y = battleBox.y + 20 + Math.random() * (battleBox.height - 40);
+                                const fromLeft = Math.random() < 0.5;
+                                addWarning(battleBox.x, y - 15, battleBox.width, 30, "#840", 60, () => {
+                                    for (let i = 0; i < 8; i++) { projectiles.push({ x: fromLeft ? battleBox.x - i*30 : battleBox.x + battleBox.width + i*30, y: y + (Math.random()-0.5)*20, vx: fromLeft ? 3*diff : -3*diff, vy: (Math.random()-0.5)*1, size: 16, color: "#840", type: "rock", life: 150, wasInside: false }); }
+                                });
+                            } else {
+                                const x = battleBox.x + 20 + Math.random() * (battleBox.width - 40);
+                                const fromTop = Math.random() < 0.5;
+                                addWarning(x - 15, battleBox.y, 30, battleBox.height, "#840", 60, () => {
+                                    for (let i = 0; i < 6; i++) { projectiles.push({ x: x + (Math.random()-0.5)*20, y: fromTop ? battleBox.y - i*30 : battleBox.y + battleBox.height + i*30, vx: (Math.random()-0.5)*1, vy: fromTop ? 3*diff : -3*diff, size: 16, color: "#840", type: "rock", life: 150, wasInside: false }); }
+                                });
+                            }
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(70 / diff) === 0) {
+                            for (let i = 0; i < 3; i++) {
+                                const x = battleBox.x + 20 + Math.random() * (battleBox.width - 40);
+                                projectiles.push({ x: x, y: battleBox.y + battleBox.height, vx: (Math.random()-0.5)*2, vy: -(4 + Math.random()*2)*diff, size: 14, color: "#840", type: "rock", gravity: 0.18, bounce: true, life: 150, wasInside: false });
+                            }
+                        }
+                    }
+                ]
+            },
+            {
+                name: "ЯДОВИТЫЙ АЛХИМИК", color: "#0f0", hp: 850, description: "Мастер ядов и зелий",
+                attacks: [
+                    function(time, diff) {
+                        if (time % Math.floor(120 / diff) === 0) {
+                            if (Math.random() < 0.3) { const q = bossDialogues["ЯДОВИТЫЙ АЛХИМИК"].attack; addQuote(q[Math.floor(Math.random()*q.length)], "#0f0"); if (bossAttackSounds["ЯДОВИТЫЙ АЛХИМИК"]) bossAttackSounds["ЯДОВИТЫЙ АЛХИМИК"](); }
+                            const px = battleBox.x + 20 + Math.random() * (battleBox.width - 70);
+                            const py = battleBox.y + 20 + Math.random() * (battleBox.height - 70);
+                            addWarning(px, py, 50, 50, "#0f0", 50, () => { puddles.push({ x: px, y: py, width: 50, height: 50, color: "#0f0", type: "acid", life: 300 }); });
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(130 / diff) === 0) {
+                            const startX = battleBox.x + Math.random() * battleBox.width;
+                            projectiles.push({ x: startX, y: battleBox.y, vx: (Math.random()-0.5)*1.5, vy: 2*diff, size: 22, color: "#0a0", type: "cloud", followPlayer: true, life: 150, speed: 1.5*diff, wasInside: false });
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(90 / diff) === 0) {
+                            const tx = battleBox.x + 30 + Math.random() * (battleBox.width - 60);
+                            const ty = battleBox.y + 30 + Math.random() * (battleBox.height - 60);
+                            projectiles.push({ x: tx, y: battleBox.y - 20, vx: 0, vy: 3.5*diff, size: 12, color: "#0f0", type: "bomb", targetY: ty, explodeRadius: 50, life: 150, wasInside: false });
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(80 / diff) === 0) {
+                            const y = battleBox.y + 20 + Math.random() * (battleBox.height - 40);
+                            addWarning(battleBox.x, y - 12, battleBox.width, 24, "#0f0", 55, () => { projectiles.push({ x: battleBox.x, y: y, vx: 5*diff, vy: 0, width: 45, height: 6, color: "#0f0", type: "acid", life: 100, wasInside: false }); });
+                        }
+                    }
+                ]
+            },
+            {
+                name: "ЗВЕЗДОЧЁТ", color: "#f0f", hp: 1250, description: "Звёздочка",
+                attacks: [
+                    function(time, diff) {
+                        if (time % Math.floor(30 / diff) === 0) {
+                            if (Math.random() < 0.15) { const q = bossDialogues["ЗВЕЗДОЧЁТ"].attack; addQuote(q[Math.floor(Math.random()*q.length)], "#f0f"); if (bossAttackSounds["ЗВЕЗДОЧЁТ"]) bossAttackSounds["ЗВЕЗДОЧЁТ"](); }
+                            const cx = battleBox.x + battleBox.width/2, cy = battleBox.y + battleBox.height/2;
+                            const angle = (time/30) * 0.3;
+                            for (let i = 0; i < 2; i++) {
+                                const a = angle + i * Math.PI;
+                                projectiles.push({ x: cx + Math.cos(a)*30, y: cy + Math.sin(a)*30, vx: Math.cos(a)*3.5*diff, vy: Math.sin(a)*3.5*diff, size: 8, color: "#f0f", type: "star", life: 120, wasInside: true });
+                            }
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(60 / diff) === 0) {
+                            for (let i = 0; i < 2; i++) {
+                                const startX = Math.random() < 0.5 ? battleBox.x : battleBox.x + battleBox.width;
+                                const startY = Math.random() < 0.5 ? battleBox.y : battleBox.y + battleBox.height;
+                                const tx = battleBox.x + 30 + Math.random() * (battleBox.width - 60);
+                                const ty = battleBox.y + 30 + Math.random() * (battleBox.height - 60);
+                                const dx = tx - startX, dy = ty - startY, dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                                projectiles.push({ x: startX, y: startY, vx: (dx/dist)*4*diff, vy: (dy/dist)*4*diff, size: 12, color: "#f0f", type: "star", life: 120, wasInside: false });
+                            }
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(220 / diff) === 0) {
+                            const cx = battleBox.x + battleBox.width/2, cy = battleBox.y + battleBox.height/2;
+                            addWarning(cx - 60, cy - 60, 120, 120, "#f0f", 70, () => {
+                                blackHoles.push({ x: cx, y: cy, radius: 60, color: "#f0f", life: 200, pull: 0.4*diff });
+                                for (let i = 0; i < 25; i++) {
+                                    setTimeout(() => {
+                                        if (gameState !== 'battle') return;
+                                        const angle = Math.random() * Math.PI * 2, dist = 80 + Math.random() * 60;
+                                        projectiles.push({ x: cx + Math.cos(angle)*dist, y: cy + Math.sin(angle)*dist, vx: -Math.cos(angle)*2*diff, vy: -Math.sin(angle)*2*diff, size: 7, color: "#f0f", type: "dust", slowOnHit: true, damages: true, life: 150, wasInside: true });
+                                    }, i * 50);
+                                }
+                            });
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(45 / diff) === 0) {
+                            projectiles.push({ x: battleBox.x + Math.random() * battleBox.width, y: battleBox.y + Math.random() * battleBox.height, vx: (Math.random()-0.5)*2.5, vy: (Math.random()-0.5)*2.5, size: 6, color: "#f0f", type: "dust", slowOnHit: true, damages: true, life: 150, wasInside: true });
+                        }
+                    }
+                ]
+            },
+            {
+                name: "АЛДУИН", color: "#f80", hp: 2500, description: "Пожиратель миров",
+                attacks: [
+                    function(time, diff) {
+                        if (time % Math.floor(130 / diff) === 0) {
+                            if (Math.random() < 0.3) { const q = bossDialogues["АЛДУИН"].attack; addQuote(q[Math.floor(Math.random()*q.length)], "#f80"); if (bossAttackSounds["АЛДУИН"]) bossAttackSounds["АЛДУИН"](); }
+                            const cx = battleBox.x + battleBox.width/2, cy = battleBox.y + 30;
+                            const targetX = battleBox.x + 40 + Math.random() * (battleBox.width - 80);
+                            const targetY = battleBox.y + 40 + Math.random() * (battleBox.height - 80);
+                            const angleToTarget = Math.atan2(targetY - cy, targetX - cx);
+                            arrowIndicators.push({ x: cx, y: cy, angle: angleToTarget, length: 100, color: "#f80", life: 60 });
+                            addWarning(targetX - 60, targetY - 40, 120, 80, "#f80", 60, () => {
+                                for (let i = -3; i <= 3; i++) {
+                                    const a = angleToTarget + i * 0.2;
+                                    for (let j = 0; j < 3; j++) { projectiles.push({ x: cx, y: cy, vx: Math.cos(a)*(2 + j*0.8)*diff, vy: Math.sin(a)*(2 + j*0.8)*diff, size: 10, color: j < 2 ? "#f80" : "#f00", type: "fire", life: 120, wasInside: false }); }
+                                }
+                            });
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(200 / diff) === 0) {
+                            for (let i = 0; i < 3; i++) {
+                                const side = i % 3;
+                                let startX, startY;
+                                if (side === 0) { startX = battleBox.x; startY = battleBox.y + battleBox.height/2; }
+                                else if (side === 1) { startX = battleBox.x + battleBox.width; startY = battleBox.y + battleBox.height/2; }
+                                else { startX = battleBox.x + battleBox.width/2; startY = battleBox.y; }
+                                projectiles.push({ x: startX, y: startY, vx: 0, vy: 0, size: 14, color: "#f80", type: "spirit", followPlayer: true, life: 150, speed: 2*diff, wasInside: false });
+                            }
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(160 / diff) === 0) {
+                            const fromLeft = Math.random() < 0.5;
+                            const y = battleBox.y + 30 + Math.random() * (battleBox.height - 60);
+                            arrowIndicators.push({ x: fromLeft ? battleBox.x + 20 : battleBox.x + battleBox.width - 20, y: y, angle: fromLeft ? 0 : Math.PI, length: battleBox.width - 40, color: "#f80", life: 60 });
+                            addWarning(fromLeft ? battleBox.x : battleBox.x + battleBox.width - 60, y - 30, 60, 60, "#f80", 60, () => {
+                                projectiles.push({ x: fromLeft ? battleBox.x - 40 : battleBox.x + battleBox.width + 40, y: y, vx: fromLeft ? 9*diff : -9*diff, vy: 0, size: 25, color: "#f80", type: "dragon", width: 60, height: 30, life: 100, wasInside: false });
+                            });
+                        }
+                    },
+                    function(time, diff) {
+                        if (time % Math.floor(220 / diff) === 0) {
+                            const cx = battleBox.x + battleBox.width/2, cy = battleBox.y + battleBox.height/2;
+                            addWarning(cx - 120, cy - 120, 240, 240, "#f80", 80, () => {
+                                const dx = player.x - cx, dy = player.y - cy, dist = Math.sqrt(dx*dx + dy*dy) || 1;
+                                player.x += (dx/dist) * 60; player.y += (dy/dist) * 60;
+                                player.x = clamp(player.x, battleBox.x + player.size, battleBox.x + battleBox.width - player.size);
+                                player.y = clamp(player.y, battleBox.y + player.size, battleBox.y + battleBox.height - player.size);
+                                for (let i = 0; i < 24; i++) {
+                                    const angle = (i/24) * Math.PI * 2;
+                                    projectiles.push({ x: cx, y: cy, vx: Math.cos(angle)*4*diff, vy: Math.sin(angle)*4*diff, size: 10, color: "#f80", type: "fire", life: 120, wasInside: true });
+                                }
+                            });
+                        }
+                    }
+                ]
+            }
+        ];
+
+        const allCreator = {
+            name: "СОЗДАТЕЛЬ", color: "rgb(255,0,255)", hp: 5000, description: "???", isSecret: true,
+            attacks: [
+                function(time, diff) {
+                    if (time % Math.floor(150 / diff) === 0) {
+                        const cx = battleBox.x + 50 + Math.random() * (battleBox.width - 100);
+                        const cy = battleBox.y + 50 + Math.random() * (battleBox.height - 100);
+                        allCreatorCircles.push({ x: cx, y: cy, radius: 0, maxRadius: 60, type: 'burst', life: 120, color: `hsl(${Math.random()*360}, 100%, 50%)` });
+                        if (Math.random() < 0.3) { const q = bossDialogues["СОЗДАТЕЛЬ"].attack; addQuote(q[Math.floor(Math.random()*q.length)], `hsl(${Math.random()*360}, 100%, 50%)`); if (bossAttackSounds["СОЗДАТЕЛЬ"]) bossAttackSounds["СОЗДАТЕЛЬ"](); }
+                    }
+                },
+                function(time, diff) {
+                    if (time % Math.floor(180 / diff) === 0) {
+                        const cx = battleBox.x + 50 + Math.random() * (battleBox.width - 100);
+                        const cy = battleBox.y + 50 + Math.random() * (battleBox.height - 100);
+                        allCreatorCircles.push({ x: cx, y: cy, radius: 0, maxRadius: 70, type: 'spiral', life: 150, color: `hsl(${Math.random()*360}, 100%, 50%)`, shootTimer: 0 });
+                    }
+                },
+                function(time, diff) {
+                    if (time % Math.floor(200 / diff) === 0) {
+                        const cx = battleBox.x + 50 + Math.random() * (battleBox.width - 100);
+                        const cy = battleBox.y + 50 + Math.random() * (battleBox.height - 100);
+                        allCreatorCircles.push({ x: cx, y: cy, radius: 0, maxRadius: 50, type: 'laser', life: 130, color: `hsl(${Math.random()*360}, 100%, 50%)`, shootTimer: 0 });
+                    }
+                },
+                function(time, diff) {
+                    const hpPercent = currentEnemy.currentHp / currentEnemy.hp;
+                    if (hpPercent < 0.4) {
+                        allCreatorTeleportTimer++;
+                        if (allCreatorTeleportTimer % 90 === 0) {
+                            player.x = battleBox.x + 30 + Math.random() * (battleBox.width - 60);
+                            player.y = battleBox.y + 30 + Math.random() * (battleBox.height - 60);
+                            player.invulnTimer = 30;
+                            for (let i = 0; i < 8; i++) {
+                                const angle = (i/8) * Math.PI * 2;
+                                projectiles.push({ x: player.x, y: player.y, vx: Math.cos(angle)*5*diff, vy: Math.sin(angle)*5*diff, size: 12, color: "#f0f", type: "fire", life: 100, wasInside: true });
+                            }
+                            if (Math.random() < 0.4) addQuote("*телепортация!*", "#f0f");
+                        }
+                    }
+                },
+                function(time, diff) {
+                    if (time % Math.floor(25 / diff) === 0) {
+                        const side = Math.floor(Math.random() * 4);
+                        let proj = { size: 8, color: `hsl(${Math.random()*360}, 100%, 70%)`, type: "fire", life: 100, wasInside: false };
+                        if (side === 0) { proj.x = battleBox.x + Math.random() * battleBox.width; proj.y = battleBox.y; proj.vx = 0; proj.vy = 3*diff; }
+                        else if (side === 1) { proj.x = battleBox.x + Math.random() * battleBox.width; proj.y = battleBox.y + battleBox.height; proj.vx = 0; proj.vy = -3*diff; }
+                        else if (side === 2) { proj.x = battleBox.x; proj.y = battleBox.y + Math.random() * battleBox.height; proj.vx = 3*diff; proj.vy = 0; }
+                        else { proj.x = battleBox.x + battleBox.width; proj.y = battleBox.y + Math.random() * battleBox.height; proj.vx = -3*diff; proj.vy = 0; }
+                        projectiles.push(proj);
+                    }
+                },
+                function(time, diff) {
+                    if (time % Math.floor(250 / diff) === 0) {
+                        if (Math.random() < 0.4) addQuote("*туннель судьбы!*", "#f0f");
+                        const direction = Math.random() < 0.5 ? 1 : -1;
+                        const startX = direction === 1 ? battleBox.x - 50 : battleBox.x + battleBox.width + 50;
+                        const gapY = battleBox.y + 40 + Math.random() * (battleBox.height - 80);
+                        const gapSize = 50;
+                        const speed = 2 * diff;
+                        sansTunnels.push({
+                            x: startX, gapY: gapY, gapSize: gapSize, direction: direction, speed: speed,
+                            wavePhase: 0, width: 30, life: 400, color: "#f0f"
+                        });
+                    }
+                }
+            ]
+        };
+
+        function calculateDamage() {
+            if (Math.random() < 0.003) return Math.floor(currentEnemy.hp * 0.99);
+            return Math.floor(Math.random() * 266) + 35;
+        }
+
+        function tryResurrect() {
+            const availableSouls = soulOrder.filter(s => collectedSouls.has(s) && s !== "ИГРОК");
+            if (availableSouls.length > 0) {
+                const nextSoul = availableSouls[0];
+                collectedSouls.delete(nextSoul);
+                currentSoulColor = soulColors[nextSoul];
+                player.hp = player.maxHp;
+                player.invulnTimer = 60;
+                addQuote(`*душа ${nextSoul} пробудилась!*`, currentSoulColor, 120);
+                playTone(800, 0.3, 'sine', 0.2);
+                setTimeout(() => playTone(1200, 0.3, 'sine', 0.15), 150);
+                setTimeout(() => playTone(1600, 0.4, 'sine', 0.1), 300);
+                return true;
+            }
+            return false;
+        }
+
+        document.getElementById('btn-mobile').addEventListener('click', () => { initAudio(); deviceType = 'mobile'; enterEnemyMenu(); });
+        document.getElementById('btn-pc').addEventListener('click', () => { initAudio(); deviceType = 'pc'; enterEnemyMenu(); });
+
+        function enterEnemyMenu() {
+            document.getElementById('start-menu').style.display = 'none';
+            gameState = 'menu';
+            initMenu();
+        }
+
+        function initMenu() {
+            const grid = document.getElementById('enemyGrid');
+            grid.innerHTML = '';
+            enemies.forEach((enemy, index) => {
+                const card = document.createElement('div');
+                card.className = 'enemy-card';
+                const soulName = enemy.name;
+                const hasSoul = collectedSouls.has(soulName);
+                const soulColor = soulColors[soulName];
+                let soulHTML = '';
+                if (hasSoul) {
+                    soulHTML = `<div class="soul-display" style="color:${soulColor}">♥</div>`;
+                }
+                card.innerHTML = `${soulHTML}<strong style="color:${enemy.color}">${enemy.name}</strong><small>${enemy.description}</small><br><small>HP: ${enemy.hp}</small>`;
+                card.onclick = () => startBattle(index);
+                grid.appendChild(card);
+            });
+            const secretBtn = document.createElement('div');
+            secretBtn.className = 'enemy-card secret';
+            secretBtn.innerHTML = `<strong style="color:#f0f">СОЗДАТЕЛЬ</strong><small>???</small><br><small>HP: 5000</small>`;
+            secretBtn.onclick = () => startBattle(9);
+            grid.appendChild(secretBtn);
+            document.getElementById('menu').style.display = 'block';
+            hideBattleUI();
+        }
+
+        function startBattle(enemyIndex) {
+            initAudio();
+            if (enemyIndex === 9) { currentEnemy = { ...allCreator }; }
+            else { currentEnemy = { ...enemies[enemyIndex] }; }
+            currentEnemy.currentHp = currentEnemy.hp;
+            battleBox.width = Math.min(400, width - 250);
+            battleBox.height = Math.min(250, height - 80);
+            battleBox.x = (width - battleBox.width) / 2;
+            battleBox.y = (height - battleBox.height) / 2 - 20;
+            player.x = battleBox.x + battleBox.width / 2;
+            player.y = battleBox.y + battleBox.height / 2;
+            player.hp = player.maxHp;
+            player.slowTimer = 0; player.invulnTimer = 0;
+            projectiles = []; warnings = []; webProjections = []; pendingWebs = [];
+            webs = []; puddles = []; blackHoles = []; arrowIndicators = [];
+            bossQuotes = []; damageNumbers = [];
+            allCreatorCircles = []; allCreatorTeleportTimer = 0;
+            sansTunnels = [];
+            skeletonHands = { left: null, right: null, timer: 0 };
+            attackTimer = 0; attackPhase = 0; battleTime = 0;
+            counterWindow = 0; targetZone = null;
+            difficultyMultiplier = 1; battlePhase = 'defend';
+            stopCreatorMusic();
+            if (currentEnemy.name === "СОЗДАТЕЛЬ") {
+                setTimeout(startCreatorMusic, 1000);
+            }
+            document.getElementById('menu').style.display = 'none';
+            gameState = 'battle';
+            showBattleUI();
+        }
+
+        function showBattleUI() {
+            if (deviceType === 'mobile') {
+                document.getElementById('joystick-zone').style.display = 'block';
+                document.getElementById('btn-attack').style.display = 'flex';
+                document.getElementById('pc-hint').style.display = 'none';
+            } else {
+                document.getElementById('joystick-zone').style.display = 'none';
+                document.getElementById('btn-attack').style.display = 'none';
+                document.getElementById('pc-hint').style.display = 'block';
+            }
+        }
+
+        function hideBattleUI() {
+            document.getElementById('joystick-zone').style.display = 'none';
+            document.getElementById('btn-attack').style.display = 'none';
+            document.getElementById('pc-hint').style.display = 'none';
+            stopCreatorMusic();
+        }
+
+        const joystickZone = document.getElementById('joystick-zone');
+        const joystickBase = document.getElementById('joystick-base');
+        const joystickStick = document.getElementById('joystick-stick');
+        let joystickActive = false;
+        let joystickTouchId = null;
+
+        joystickZone.addEventListener('touchstart', (e) => {
+            e.preventDefault(); initAudio();
+            if (joystickActive) return;
+            const touch = e.changedTouches[0];
+            joystickTouchId = touch.identifier;
+            joystickActive = true;
+            joystickStick.classList.add('active');
+            updateJoystick(touch);
+        });
+        joystickZone.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (!joystickActive) return;
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystickTouchId) { updateJoystick(e.changedTouches[i]); break; }
+            }
+        });
+        function endJoystick(e) {
+            e.preventDefault();
+            for (let i = 0; i < e.changedTouches.length; i++) {
+                if (e.changedTouches[i].identifier === joystickTouchId) {
+                    joystickActive = false; joystickTouchId = null;
+                    joystickX = 0; joystickY = 0;
+                    joystickStick.classList.remove('active');
+                    joystickStick.style.transform = 'translate(-50%, -50%)';
+                    break;
+                }
+            }
+        }
+        joystickZone.addEventListener('touchend', endJoystick);
+        joystickZone.addEventListener('touchcancel', endJoystick);
+
+        function updateJoystick(touch) {
+            const rect = joystickBase.getBoundingClientRect();
+            const centerX = rect.left + rect.width / 2;
+            const centerY = rect.top + rect.height / 2;
+            let deltaX = touch.clientX - centerX, deltaY = touch.clientY - centerY;
+            const distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
+            const maxDistance = 45;
+            if (distance > maxDistance) { deltaX = (deltaX / distance) * maxDistance; deltaY = (deltaY / distance) * maxDistance; }
+            joystickX = deltaX / maxDistance; joystickY = deltaY / maxDistance;
+            joystickStick.style.transform = `translate(calc(-50% + ${deltaX}px), calc(-50% + ${deltaY}px))`;
+        }
+
+        const btnAttack = document.getElementById('btn-attack');
+        btnAttack.addEventListener('touchstart', (e) => { e.preventDefault(); initAudio(); isAttacking = true; });
+        btnAttack.addEventListener('touchend', (e) => { e.preventDefault(); isAttacking = false; });
+        btnAttack.addEventListener('mousedown', () => { initAudio(); isAttacking = true; });
+        btnAttack.addEventListener('mouseup', () => isAttacking = false);
+        btnAttack.addEventListener('mouseleave', () => isAttacking = false);
+
+        window.addEventListener('keydown', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'w' || key === 'ц' || e.code === 'ArrowUp') { keys.up = true; e.preventDefault(); }
+            if (key === 's' || key === 'ы' || e.code === 'ArrowDown') { keys.down = true; e.preventDefault(); }
+            if (key === 'a' || key === 'ф' || e.code === 'ArrowLeft') { keys.left = true; e.preventDefault(); }
+            if (key === 'd' || key === 'в' || e.code === 'ArrowRight') { keys.right = true; e.preventDefault(); }
+            if (key === ' ' || key === 'j' || key === 'о') { keys.attack = true; e.preventDefault(); }
+        });
+        window.addEventListener('keyup', (e) => {
+            const key = e.key.toLowerCase();
+            if (key === 'w' || key === 'ц' || e.code === 'ArrowUp') keys.up = false;
+            if (key === 's' || key === 'ы' || e.code === 'ArrowDown') keys.down = false;
+            if (key === 'a' || key === 'ф' || e.code === 'ArrowLeft') keys.left = false;
+            if (key === 'd' || key === 'в' || e.code === 'ArrowRight') keys.right = false;
+            if (key === ' ' || key === 'j' || key === 'о') keys.attack = false;
+        });
+
+        function update() {
+            if (gameState !== 'battle') return;
+            battleTime++;
+
+            let hpPercent = currentEnemy.currentHp / currentEnemy.hp;
+            difficultyMultiplier = 1 + (1 - hpPercent) * 1.5;
+
+            if (player.invulnTimer > 0) player.invulnTimer--;
+            let currentSpeed = player.speed;
+            if (player.slowTimer > 0) { currentSpeed *= 0.5; player.slowTimer--; }
+
+            for (const bh of blackHoles) {
+                const dx = bh.x - player.x, dy = bh.y - player.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                if (dist < bh.radius * 2 && dist > 5) { player.x += (dx / dist) * bh.pull; player.y += (dy / dist) * bh.pull; }
+            }
+
+            let dx = 0, dy = 0;
+            if (deviceType === 'mobile') { dx = joystickX; dy = joystickY; }
+            else {
+                if (keys.left) dx -= 1;
+                if (keys.right) dx += 1;
+                if (keys.up) dy -= 1;
+                if (keys.down) dy += 1;
+                if (dx !== 0 && dy !== 0) { const len = Math.sqrt(dx * dx + dy * dy); dx /= len; dy /= len; }
+            }
+            player.x += dx * currentSpeed;
+            player.y += dy * currentSpeed;
+            player.x = clamp(player.x, battleBox.x + player.size / 2, battleBox.x + battleBox.width - player.size / 2);
+            player.y = clamp(player.y, battleBox.y + player.size / 2, battleBox.y + battleBox.height - player.size / 2);
+
+            for (const p of puddles) {
+                if (player.x > p.x && player.x < p.x + p.width && player.y > p.y && player.y < p.y + p.height) {
+                    if (p.effect === 'slow') { player.slowTimer = 10; }
+                    else if (p.type === 'acid' && player.invulnTimer <= 0) {
+                        if (battleTime % 30 === 0) { player.hp -= 2; player.invulnTimer = 30; if (player.hp <= 0) { player.hp = 0; handlePlayerDeath(); } }
+                    }
+                }
+            }
+
+            for (const w of webs) {
+                const dist = pointToLineDist(player.x, player.y, w.x1, w.y1, w.x2, w.y2);
+                if (dist < player.size / 2 + 3 && player.invulnTimer <= 0) {
+                    player.hp -= 6; player.invulnTimer = 30;
+                    if (player.hp <= 0) { player.hp = 0; handlePlayerDeath(); }
+                }
+            }
+
+            for (const t of sansTunnels) {
+                const tunnelLeft = t.x;
+                const tunnelRight = t.x + t.width;
+                if (player.x + player.size/2 > tunnelLeft && player.x - player.size/2 < tunnelRight) {
+                    const inGap = player.y > t.gapY - t.gapSize/2 && player.y < t.gapY + t.gapSize/2;
+                    if (!inGap && player.invulnTimer <= 0) {
+                        player.hp -= 5;
+                        player.invulnTimer = 30;
+                        if (player.hp <= 0) { player.hp = 0; handlePlayerDeath(); }
+                    }
+                }
+            }
+
+            for (let i = warnings.length - 1; i >= 0; i--) { warnings[i].delay--; if (warnings[i].delay <= 0) { warnings[i].callback(); warnings.splice(i, 1); } }
+            for (let i = webProjections.length - 1; i >= 0; i--) { webProjections[i].life--; }
+            for (let i = arrowIndicators.length - 1; i >= 0; i--) { arrowIndicators[i].life--; if (arrowIndicators[i].life <= 0) arrowIndicators.splice(i, 1); }
+            for (let i = bossQuotes.length - 1; i >= 0; i--) { bossQuotes[i].life--; if (bossQuotes[i].life <= 0) bossQuotes.splice(i, 1); }
+            for (let i = damageNumbers.length - 1; i >= 0; i--) { damageNumbers[i].life--; damageNumbers[i].y += damageNumbers[i].vy; if (damageNumbers[i].life <= 0) damageNumbers.splice(i, 1); }
+            for (let i = puddles.length - 1; i >= 0; i--) { puddles[i].life--; if (puddles[i].life <= 0) puddles.splice(i, 1); }
+            for (let i = blackHoles.length - 1; i >= 0; i--) { blackHoles[i].life--; if (blackHoles[i].life <= 0) blackHoles.splice(i, 1); }
+            for (let i = webs.length - 1; i >= 0; i--) { webs[i].life--; if (webs[i].life <= 0) webs.splice(i, 1); }
+
+            for (let i = sansTunnels.length - 1; i >= 0; i--) {
+                const t = sansTunnels[i];
+                t.life--;
+                t.x += t.speed * t.direction;
+                t.wavePhase += 0.05;
+                t.gapY += Math.sin(t.wavePhase) * 1.5;
+                t.gapY = clamp(t.gapY, battleBox.y + t.gapSize/2 + 10, battleBox.y + battleBox.height - t.gapSize/2 - 10);
+                if (t.life <= 0 || t.x < battleBox.x - 100 || t.x > battleBox.x + battleBox.width + 100) {
+                    sansTunnels.splice(i, 1);
+                }
+            }
+
+            for (let i = allCreatorCircles.length - 1; i >= 0; i--) {
+                const circle = allCreatorCircles[i];
+                circle.life--;
+                if (circle.radius < circle.maxRadius) circle.radius += 2;
+                if (circle.type === 'burst' && circle.radius >= circle.maxRadius * 0.8 && circle.life % 10 === 0) {
+                    for (let j = 0; j < 12; j++) {
+                        const angle = (j / 12) * Math.PI * 2;
+                        projectiles.push({ x: circle.x, y: circle.y, vx: Math.cos(angle)*4, vy: Math.sin(angle)*4, size: 10, color: circle.color, type: "fire", life: 80, wasInside: true });
+                    }
+                }
+                if (circle.type === 'spiral') {
+                    circle.shootTimer++;
+                    if (circle.shootTimer % 8 === 0) {
+                        const angle = (circle.shootTimer / 8) * 0.5;
+                        projectiles.push({ x: circle.x + Math.cos(angle)*circle.radius, y: circle.y + Math.sin(angle)*circle.radius, vx: Math.cos(angle + Math.PI/2)*3, vy: Math.sin(angle + Math.PI/2)*3, size: 8, color: circle.color, type: "fire", life: 80, wasInside: true });
+                    }
+                }
+                if (circle.type === 'laser' && circle.radius >= circle.maxRadius * 0.9) {
+                    circle.shootTimer++;
+                    if (circle.shootTimer % 20 === 0) {
+                        const angle = Math.random() * Math.PI * 2;
+                        projectiles.push({ x: circle.x, y: circle.y, vx: Math.cos(angle)*6, vy: Math.sin(angle)*6, size: 14, color: circle.color, type: "laser", life: 60, wasInside: true });
+                    }
+                }
+                if (circle.life <= 0) allCreatorCircles.splice(i, 1);
+            }
+
+            // === ЗОНА КОНТРАТАКИ ПО ТАЙМЕРУ (зависит от HP босса) ===
+            if (battlePhase === 'defend' || battlePhase === 'counter') {
+                attackTimer++;
+                currentEnemy.attacks[attackPhase](attackTimer, difficultyMultiplier);
+                if (attackTimer % 600 === 0) { attackPhase = (attackPhase + 1) % currentEnemy.attacks.length; }
+                
+                // Чем меньше HP босса — тем чаще появляется зона
+                // При 100% HP: 900 кадров (15 сек), при 0% HP: 300 кадров (5 сек)
+                const zoneInterval = Math.floor(300 + hpPercent * 600);
+                
+                if (battlePhase === 'defend' && attackTimer > zoneInterval && !targetZone) {
+                    battlePhase = 'counter';
+                    counterWindow = 180;
+                    let zoneSize = 70 * hpPercent + 25;
+                    targetZone = { x: battleBox.x + Math.random() * (battleBox.width - zoneSize), y: battleBox.y + Math.random() * (battleBox.height - zoneSize), width: zoneSize, height: zoneSize };
+                }
+            }
+
+            if (battlePhase === 'counter') {
+                counterWindow--;
+                let attacking = deviceType === 'mobile' ? isAttacking : keys.attack;
+                if (attacking && targetZone) {
+                    if (player.x > targetZone.x && player.x < targetZone.x + targetZone.width && player.y > targetZone.y && player.y < targetZone.y + targetZone.height) {
+                        const damage = calculateDamage();
+                        const isCrit = damage >= currentEnemy.hp * 0.5;
+                        currentEnemy.currentHp -= damage;
+                        addDamageNumber(damage, isCrit);
+                        const hurtQuotes = bossDialogues[currentEnemy.name]?.hurt;
+                        if (hurtQuotes) {
+                            addQuote(hurtQuotes[Math.floor(Math.random() * hurtQuotes.length)], currentEnemy.color, 90);
+                            if (bossHurtSounds[currentEnemy.name]) bossHurtSounds[currentEnemy.name]();
+                        }
+                        if (currentEnemy.currentHp <= 0) {
+                            defeatedBosses.add(currentEnemy.name);
+                            if (soulColors[currentEnemy.name]) {
+                                collectedSouls.add(currentEnemy.name);
+                            }
+                            gameState = 'victory';
+                            hideBattleUI();
+                        } else { 
+                            battlePhase = 'defend'; 
+                            attackTimer = 0; 
+                            targetZone = null; 
+                        }
+                    }
+                }
+                if (counterWindow <= 0) { 
+                    battlePhase = 'defend'; 
+                    attackTimer = 0; 
+                    targetZone = null; 
+                }
+            }
+
+            // === ОБНОВЛЕНИЕ СНАРЯДОВ С ПРОВЕРКОЙ ГРАНИЦ ПОЛЯ ===
+            for (let i = projectiles.length - 1; i >= 0; i--) {
+                const p = projectiles[i];
+                if (p.gravity) p.vy += p.gravity;
+                if (p.followPlayer && p.life > 0) {
+                    const pdx = player.x - p.x, pdy = player.y - p.y, pdist = Math.sqrt(pdx * pdx + pdy * pdy);
+                    if (pdist > 5) { const spd = p.speed || 2; p.vx = (pdx / pdist) * spd; p.vy = (pdy / pdist) * spd; }
+                }
+                if (p.type === 'chainBone') { p.time++; p.x += p.vx + Math.sin(p.time * p.speed) * 1.5; p.y += p.vy; }
+                if (p.type === 'boomerang') { p.time++; p.radius += 3; if (p.time > 40) p.radius -= 6; if (p.radius < 0) p.radius = 0; p.x = p.centerX + Math.cos(p.angle + p.time * 0.1) * p.radius; p.y = p.centerY + Math.sin(p.angle + p.time * 0.1) * p.radius; }
+                if (p.expanding) { const speed = Math.sqrt(p.vx * p.vx + p.vy * p.vy); const newSpeed = speed + p.expandSpeed; const angle = Math.atan2(p.vy, p.vx); p.vx = Math.cos(angle) * newSpeed; p.vy = Math.sin(angle) * newSpeed; }
+                
+                // Проверяем, находится ли снаряд внутри поля
+                if (isInsideField(p.x, p.y)) {
+                    p.wasInside = true;
+                }
+                
+                if (p.type === 'snowball') {
+                    p.life--;
+                    const outOfBounds = p.x < battleBox.x - 20 || p.x > battleBox.x + battleBox.width + 20 || p.y < battleBox.y - 20 || p.y > battleBox.y + battleBox.height + 20;
+                    if ((p.life <= 0 || outOfBounds) && p.explodeOnHit) {
+                        for (let j = 0; j < 6; j++) { const angle = (j/6) * Math.PI * 2; for (let k = 1; k <= 3; k++) { projectiles.push({ x: p.x, y: p.y, vx: Math.cos(angle)*k*1.8, vy: Math.sin(angle)*k*1.8, size: 6, color: "#0ff", type: "ice", life: 80, wasInside: true }); } }
+                        projectiles.splice(i, 1); continue;
+                    }
+                }
+                if (p.type === 'clone') {
+                    p.life--; p.shootTimer++;
+                    if (p.shootTimer % 30 === 0) { const pdx = player.x - p.x, pdy = player.y - p.y, pdist = Math.sqrt(pdx * pdx + pdy * pdy) || 1; projectiles.push({ x: p.x, y: p.y, vx: (pdx/pdist)*3.5, vy: (pdy/pdist)*3.5, size: 8, color: "#808", type: "shadow", life: 100, wasInside: true }); }
+                    if (p.life <= 0) { projectiles.splice(i, 1); continue; }
+                }
+                if (p.type === 'bomb') {
+                    if (p.y >= p.targetY) {
+                        for (let j = 0; j < 8; j++) { const angle = (j/8) * Math.PI * 2; projectiles.push({ x: p.x, y: p.y, vx: Math.cos(angle)*3.5, vy: Math.sin(angle)*3.5, size: 8, color: "#0f0", type: "acid", life: 80, wasInside: true }); }
+                        puddles.push({ x: p.x - 25, y: p.y - 25, width: 50, height: 50, color: "#0f0", type: "acid", life: 200 });
+                        projectiles.splice(i, 1); continue;
+                    }
+                }
+                if (p.bounce) {
+                    // Отскок от стенок поля
+                    let bounced = false;
+                    if (p.x < battleBox.x + p.size/2) { p.vx = Math.abs(p.vx) * 0.7; p.x = battleBox.x + p.size/2; bounced = true; }
+                    if (p.x > battleBox.x + battleBox.width - p.size/2) { p.vx = -Math.abs(p.vx) * 0.7; p.x = battleBox.x + battleBox.width - p.size/2; bounced = true; }
+                    if (p.y < battleBox.y + p.size/2) { p.vy = Math.abs(p.vy) * 0.7; p.y = battleBox.y + p.size/2; bounced = true; }
+                    if (p.y > battleBox.y + battleBox.height - p.size/2) { p.vy = -Math.abs(p.vy) * 0.7; p.y = battleBox.y + battleBox.height - p.size/2; bounced = true; }
+                    if (bounced) p.bounceCount = (p.bounceCount || 0) + 1;
+                    if (p.bounceCount >= 3) { projectiles.splice(i, 1); continue; }
+                } else {
+                    // Обычные снаряды: если были внутри поля и вышли — удаляем
+                    if (p.wasInside) {
+                        const margin = 5;
+                        if (p.x < battleBox.x - margin || p.x > battleBox.x + battleBox.width + margin ||
+                            p.y < battleBox.y - margin || p.y > battleBox.y + battleBox.height + margin) {
+                            projectiles.splice(i, 1);
+                            continue;
+                        }
+                    }
+                }
+                
+                if (p.life !== undefined) { p.life--; if (p.life <= 0) { projectiles.splice(i, 1); continue; } }
+                if (!p.stationary && p.type !== 'chainBone' && p.type !== 'boomerang') { p.x += p.vx; p.y += p.vy; }
+                if (p.stationary) { p.x = clamp(p.x, battleBox.x, battleBox.x + battleBox.width); p.y = clamp(p.y, battleBox.y, battleBox.y + battleBox.height); }
+                
+                if (player.invulnTimer > 0) continue;
+                const pdx = player.x - p.x, pdy = player.y - p.y, dist = Math.sqrt(pdx * pdx + pdy * pdy);
+                let hitDist = (p.size || 10) / 2 + player.size / 2;
+                if (p.width && p.height) { hitDist = Math.max(p.width, p.height) / 2 + player.size / 2; }
+                if (dist < hitDist) {
+                    if (p.type === 'snowball' && p.explodeOnHit) {
+                        for (let j = 0; j < 6; j++) { const angle = (j/6) * Math.PI * 2; for (let k = 1; k <= 3; k++) { projectiles.push({ x: p.x, y: p.y, vx: Math.cos(angle)*k*1.8, vy: Math.sin(angle)*k*1.8, size: 6, color: "#0ff", type: "ice", life: 80, wasInside: true }); } }
+                        projectiles.splice(i, 1); player.hp -= 4; player.invulnTimer = 30;
+                    } else if (p.type === 'dust') {
+                        if (p.slowOnHit) player.slowTimer = 120;
+                        if (p.damages) { player.hp -= 3; player.invulnTimer = 30; }
+                        projectiles.splice(i, 1);
+                    } else { player.hp -= 4; player.invulnTimer = 30; projectiles.splice(i, 1); }
+                    if (player.hp <= 0) { player.hp = 0; handlePlayerDeath(); }
+                }
+            }
+        }
+
+        function handlePlayerDeath() {
+            if (tryResurrect()) { return; }
+            gameState = 'gameover';
+            hideBattleUI();
+        }
+
+        function draw() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, width, height);
+
+            if (gameState === 'battle') {
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 4;
+                ctx.strokeRect(battleBox.x, battleBox.y, battleBox.width, battleBox.height);
+
+                for (const circle of allCreatorCircles) {
+                    const alpha = circle.life / 150;
+                    ctx.strokeStyle = circle.color; ctx.globalAlpha = alpha; ctx.lineWidth = 3;
+                    ctx.beginPath(); ctx.arc(circle.x, circle.y, circle.radius, 0, Math.PI * 2); ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+
+                for (const t of sansTunnels) {
+                    ctx.fillStyle = t.color;
+                    ctx.fillRect(t.x, battleBox.y, t.width, t.gapY - t.gapSize/2 - battleBox.y);
+                    ctx.fillRect(t.x, t.gapY + t.gapSize/2, t.width, battleBox.y + battleBox.height - (t.gapY + t.gapSize/2));
+                    ctx.fillStyle = 'rgba(0, 255, 0, 0.15)';
+                    ctx.fillRect(t.x, t.gapY - t.gapSize/2, t.width, t.gapSize);
+                }
+
+                for (const p of puddles) {
+                    const alpha = Math.min(1, p.life / 60);
+                    ctx.fillStyle = p.color + Math.floor(alpha * 100).toString(16).padStart(2, '0');
+                    ctx.fillRect(p.x, p.y, p.width, p.height);
+                    ctx.strokeStyle = p.color; ctx.lineWidth = 2; ctx.strokeRect(p.x, p.y, p.width, p.height);
+                }
+
+                for (const wp of webProjections) {
+                    const alpha = 0.3 + 0.3 * Math.sin(Date.now() * 0.01);
+                    ctx.strokeStyle = "#aaa"; ctx.globalAlpha = alpha; ctx.lineWidth = 4; ctx.setLineDash([10, 10]);
+                    ctx.beginPath(); ctx.moveTo(wp.x1, wp.y1); ctx.lineTo(wp.x2, wp.y2); ctx.stroke();
+                    ctx.setLineDash([]); ctx.globalAlpha = 1;
+                }
+
+                for (const w of webs) {
+                    const alpha = Math.min(1, w.life / 60);
+                    ctx.strokeStyle = w.color; ctx.globalAlpha = alpha; ctx.lineWidth = 4;
+                    ctx.beginPath(); ctx.moveTo(w.x1, w.y1); ctx.lineTo(w.x2, w.y2); ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+
+                for (const bh of blackHoles) {
+                    const alpha = Math.min(1, bh.life / 60);
+                    const gradient = ctx.createRadialGradient(bh.x, bh.y, 0, bh.x, bh.y, bh.radius);
+                    gradient.addColorStop(0, bh.color); gradient.addColorStop(1, 'rgba(0,0,0,0)');
+                    ctx.fillStyle = gradient; ctx.globalAlpha = alpha;
+                    ctx.beginPath(); ctx.arc(bh.x, bh.y, bh.radius, 0, Math.PI * 2); ctx.fill();
+                    ctx.globalAlpha = 1;
+                }
+
+                for (const arrow of arrowIndicators) {
+                    const alpha = arrow.life / 60;
+                    ctx.strokeStyle = arrow.color; ctx.globalAlpha = alpha; ctx.lineWidth = 4;
+                    ctx.beginPath(); ctx.moveTo(arrow.x, arrow.y);
+                    ctx.lineTo(arrow.x + Math.cos(arrow.angle) * arrow.length, arrow.y + Math.sin(arrow.angle) * arrow.length); ctx.stroke();
+                    const endX = arrow.x + Math.cos(arrow.angle) * arrow.length;
+                    const endY = arrow.y + Math.sin(arrow.angle) * arrow.length;
+                    ctx.beginPath(); ctx.moveTo(endX, endY);
+                    ctx.lineTo(endX - Math.cos(arrow.angle - 0.4) * 15, endY - Math.sin(arrow.angle - 0.4) * 15);
+                    ctx.moveTo(endX, endY);
+                    ctx.lineTo(endX - Math.cos(arrow.angle + 0.4) * 15, endY - Math.sin(arrow.angle + 0.4) * 15); ctx.stroke();
+                    ctx.globalAlpha = 1;
+                }
+
+                for (const q of bossQuotes) {
+                    const alpha = q.life / q.maxLife;
+                    const scale = 1 + (1 - alpha) * 0.3;
+                    ctx.globalAlpha = alpha; ctx.fillStyle = q.color;
+                    ctx.font = `bold ${Math.floor(18 * scale)}px Courier New`;
+                    ctx.textAlign = 'center';
+                    ctx.fillText(q.text, q.x, q.y - (q.maxLife - q.life) * 0.3);
+                    ctx.globalAlpha = 1;
+                }
+
+                for (const d of damageNumbers) {
+                    const alpha = d.life / d.maxLife;
+                    const scale = 1 + (1 - alpha) * 0.5;
+                    ctx.globalAlpha = alpha; ctx.fillStyle = d.isCrit ? "#ff0" : "#fff";
+                    ctx.font = `bold ${Math.floor(24 * scale)}px Courier New`;
+                    ctx.textAlign = 'left';
+                    ctx.fillText(`-${d.value}`, d.x, d.y);
+                    ctx.globalAlpha = 1;
+                }
+
+                for (const w of warnings) {
+                    const alpha = 0.3 + 0.3 * Math.sin(Date.now() * 0.01);
+                    ctx.fillStyle = w.color + Math.floor(alpha * 255).toString(16).padStart(2, '0');
+                    if (w.isSpikeWarning) {
+                        ctx.beginPath();
+                        if (w.fromBottom) { ctx.moveTo(w.x + w.width/2, w.y); ctx.lineTo(w.x + w.width, w.y + w.height); ctx.lineTo(w.x, w.y + w.height); }
+                        else { ctx.moveTo(w.x, w.y); ctx.lineTo(w.x + w.width, w.y); ctx.lineTo(w.x + w.width/2, w.y + w.height); }
+                        ctx.closePath(); ctx.fill();
+                        ctx.strokeStyle = w.color; ctx.lineWidth = 2; ctx.stroke();
+                    } else {
+                        ctx.fillRect(w.x, w.y, w.width, w.height);
+                        ctx.strokeStyle = w.color; ctx.lineWidth = 2; ctx.setLineDash([5, 5]); ctx.strokeRect(w.x, w.y, w.width, w.height); ctx.setLineDash([]);
+                    }
+                }
+
+                if (battlePhase === 'counter' && targetZone) {
+                    ctx.fillStyle = 'rgba(0, 255, 0, 0.3)';
+                    ctx.fillRect(targetZone.x, targetZone.y, targetZone.width, targetZone.height);
+                    ctx.strokeStyle = '#0f0'; ctx.lineWidth = 3; ctx.strokeRect(targetZone.x, targetZone.y, targetZone.width, targetZone.height);
+                    ctx.fillStyle = '#0f0'; ctx.font = 'bold 16px Courier New'; ctx.textAlign = 'center';
+                    ctx.fillText('АТАКУЙ ЗДЕСЬ!', width / 2, battleBox.y - 50);
+                }
+
+                let enemyColor = currentEnemy.color;
+                if (currentEnemy.name === "СОЗДАТЕЛЬ") {
+                    const hue = (Date.now() / 10) % 360;
+                    enemyColor = `hsl(${hue}, 100%, 50%)`;
+                }
+
+                ctx.fillStyle = enemyColor;
+                ctx.font = 'bold 20px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText(currentEnemy.name, width / 2, battleBox.y - 30);
+
+                ctx.fillStyle = '#333';
+                ctx.fillRect(width / 2 - 100, battleBox.y - 20, 200, 8);
+                ctx.fillStyle = '#0f0';
+                ctx.fillRect(width / 2 - 100, battleBox.y - 20, 200 * (currentEnemy.currentHp / currentEnemy.hp), 8);
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(width / 2 - 100, battleBox.y - 20, 200, 8);
+
+                ctx.fillStyle = enemyColor;
+                ctx.font = 'bold 16px Courier New';
+                ctx.textAlign = 'right';
+                ctx.fillText(`HP: ${Math.max(0, Math.floor(currentEnemy.currentHp))}/${currentEnemy.hp}`, battleBox.x + battleBox.width + 150, battleBox.y + 20);
+
+                const barX = battleBox.x + battleBox.width + 10;
+                const barY = battleBox.y;
+                const barW = 15;
+                const barH = battleBox.height;
+                ctx.fillStyle = '#333';
+                ctx.fillRect(barX, barY, barW, barH);
+                ctx.fillStyle = enemyColor;
+                ctx.fillRect(barX, barY + barH * (1 - currentEnemy.currentHp / currentEnemy.hp), barW, barH * (currentEnemy.currentHp / currentEnemy.hp));
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(barX, barY, barW, barH);
+
+                for (const p of projectiles) {
+                    ctx.fillStyle = p.color;
+                    if (p.type === 'dragon') { ctx.fillRect(p.x - (p.width || 60) / 2, p.y - (p.height || 30) / 2, p.width || 60, p.height || 30); }
+                    else if (p.type === 'spear') { ctx.fillRect(p.x - (p.width || 8) / 2, p.y - (p.height || 40) / 2, p.width || 8, p.height || 40); }
+                    else if (p.width && p.height) { ctx.fillRect(p.x - p.width / 2, p.y - p.height / 2, p.width, p.height); }
+                    else if (p.type === 'clone') { ctx.globalAlpha = 0.7; ctx.beginPath(); ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+                    else if (p.type === 'snowball') {
+                        ctx.beginPath(); ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2); ctx.fill();
+                        ctx.strokeStyle = '#fff'; ctx.lineWidth = 2;
+                        for (let j = 0; j < 6; j++) { const angle = (j/6) * Math.PI * 2; ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(p.x + Math.cos(angle) * p.size / 2, p.y + Math.sin(angle) * p.size / 2); ctx.stroke(); }
+                    }
+                    else if (p.type === 'cloud') { ctx.globalAlpha = 0.6; ctx.beginPath(); ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2); ctx.fill(); ctx.globalAlpha = 1; }
+                    else { ctx.beginPath(); ctx.arc(p.x, p.y, p.size / 2, 0, Math.PI * 2); ctx.fill(); }
+                }
+
+                if (player.invulnTimer <= 0 || Math.floor(player.invulnTimer / 4) % 2 === 0) {
+                    ctx.fillStyle = player.slowTimer > 0 ? '#88f' : currentSoulColor;
+                    ctx.beginPath();
+                    const hx = player.x, hy = player.y, hs = player.size / 2;
+                    ctx.moveTo(hx, hy + hs);
+                    ctx.bezierCurveTo(hx + hs, hy, hx + hs, hy - hs, hx, hy - hs / 2);
+                    ctx.bezierCurveTo(hx - hs, hy - hs, hx - hs, hy, hx, hy + hs);
+                    ctx.fill();
+                }
+
+                ctx.fillStyle = '#fff'; ctx.font = '16px Courier New'; ctx.textAlign = 'left';
+                ctx.fillText(`HP: ${player.hp}/${player.maxHp}`, 20, height - 40);
+                ctx.fillStyle = '#333'; ctx.fillRect(20, height - 30, 180, 10);
+                ctx.fillStyle = currentSoulColor;
+                ctx.fillRect(20, height - 30, 180 * (player.hp / player.maxHp), 10);
+                ctx.strokeStyle = '#fff'; ctx.lineWidth = 2; ctx.strokeRect(20, height - 30, 180, 10);
+
+                ctx.fillStyle = battlePhase === 'defend' ? '#ff0' : '#0f0';
+                ctx.font = 'bold 16px Courier New'; ctx.textAlign = 'right';
+                ctx.fillText(battlePhase === 'defend' ? 'ЗАЩИТА' : 'КОНТРАТАКА', width - 20, height - 40);
+
+                // Таймер до следующей зоны
+                if (battlePhase === 'defend') {
+                    const hpPercentNow = currentEnemy.currentHp / currentEnemy.hp;
+                    const zoneInterval = Math.floor(300 + hpPercentNow * 600);
+                    const timeLeft = Math.max(0, zoneInterval - attackTimer);
+                    ctx.fillStyle = '#888';
+                    ctx.font = '14px Courier New';
+                    ctx.textAlign = 'right';
+                    ctx.fillText(`Зона через: ${Math.ceil(timeLeft / 60)}с`, width - 20, height - 85);
+                }
+
+                if (battlePhase === 'counter') {
+                    ctx.fillStyle = '#0f0'; ctx.font = 'bold 18px Courier New'; ctx.textAlign = 'right';
+                    ctx.fillText(`Время: ${Math.ceil(counterWindow / 60)}с`, width - 20, height - 65);
+                }
+
+                ctx.font = '14px Courier New';
+                ctx.textAlign = 'left';
+                ctx.fillStyle = '#888';
+                ctx.fillText('Души:', 20, 30);
+                let soulX = 90;
+                for (const soulName of collectedSouls) {
+                    if (soulName === "ИГРОК") continue;
+                    drawPixelHeart(soulX, 25, 20, soulColors[soulName]);
+                    soulX += 25;
+                }
+            } else if (gameState === 'gameover') {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'; ctx.fillRect(0, 0, width, height);
+                ctx.fillStyle = '#f00'; ctx.font = 'bold 48px Courier New'; ctx.textAlign = 'center';
+                ctx.fillText('ПОРАЖЕНИЕ', width / 2, height / 2 - 30);
+                ctx.fillStyle = '#fff'; ctx.font = '20px Courier New';
+                ctx.fillText('Нажми для возврата в меню', width / 2, height / 2 + 30);
+            } else if (gameState === 'victory') {
+                ctx.fillStyle = 'rgba(0, 0, 0, 0.9)'; ctx.fillRect(0, 0, width, height);
+                ctx.fillStyle = '#0f0'; ctx.font = 'bold 48px Courier New'; ctx.textAlign = 'center';
+                ctx.fillText('ПОБЕДА!', width / 2, height / 2 - 40);
+                ctx.fillStyle = '#ff0'; ctx.font = '22px Courier New';
+                ctx.fillText('Враг повержен!', width / 2, height / 2 + 10);
+                if (currentEnemy.name !== "СОЗДАТЕЛЬ" && soulColors[currentEnemy.name]) {
+                    ctx.fillStyle = soulColors[currentEnemy.name];
+                    ctx.font = '18px Courier New';
+                    ctx.fillText(`Получена душа: ${currentEnemy.name}`, width / 2, height / 2 + 40);
+                }
+                ctx.fillStyle = '#fff'; ctx.font = '18px Courier New';
+                ctx.fillText('Нажми для возврата в меню', width / 2, height / 2 + 70);
+            }
+        }
+
+        canvas.addEventListener('click', () => { if (gameState === 'gameover' || gameState === 'victory') { gameState = 'menu'; initMenu(); } });
+        canvas.addEventListener('touchstart', (e) => { if (gameState === 'gameover' || gameState === 'victory') { e.preventDefault(); gameState = 'menu'; initMenu(); } });
+
+        function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
+        gameLoop();
+    </script>
+</body>
+</html>
